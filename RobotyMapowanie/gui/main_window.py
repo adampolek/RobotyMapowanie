@@ -1,5 +1,4 @@
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QMenuBar
+from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QMenuBar, QAction, QFileDialog
 
 from gui.my_canvas import MyCanvas
 
@@ -31,16 +30,35 @@ class MyWindow(QMainWindow):
         self.main_layout.addWidget(end)
         widget.setLayout(self.main_layout)
         self.setCentralWidget(widget)
-        self.show()
         self.__create_menubar()
+        self.show()
 
     def __set_settings(self):
         self.setMinimumSize(1000, 800)
         self.setWindowTitle("Mapowanie")
 
     def __create_menubar(self):
-        self.menuBar = QMenuBar(self)
-        fileMenu = self.menuBar.addMenu("File")
-        fileMenu.addAction("Save")
-        fileMenu.addAction("Load")
-        self.menuBar.show()
+        save_action: QAction = QAction('Save file', self)
+        save_action.setShortcut('Ctrl+S')
+        save_action.setStatusTip('Saving file')
+        save_action.triggered.connect(self.__save_map)
+
+        load_action: QAction = QAction('Load file', self)
+        load_action.setShortcut('Ctrl+L')
+        load_action.setStatusTip('Load file')
+        load_action.triggered.connect(self.__load_map)
+
+        menu_bar: QMenuBar = self.menuBar()
+        file_menu = menu_bar.addMenu('&File')
+        file_menu.addAction(save_action)
+        file_menu.addAction(load_action)
+
+    def __save_map(self):
+        file_name, _ = QFileDialog.getSaveFileName()
+        if file_name:
+            pass
+
+    def __load_map(self):
+        file_name, _ = QFileDialog.getOpenFileName()
+        if file_name:
+            pass
