@@ -22,12 +22,8 @@ class MyWindow(QMainWindow):
         start = QPushButton()
         start.setText("SET START POINT")
         start.clicked.connect(self.canvas.set_start)
-        end = QPushButton()
-        end.setText("SET END POINT")
-        end.clicked.connect(self.canvas.set_end)
         self.main_layout.addWidget(run)
         self.main_layout.addWidget(start)
-        self.main_layout.addWidget(end)
         widget.setLayout(self.main_layout)
         self.setCentralWidget(widget)
         self.__create_menubar()
@@ -56,9 +52,11 @@ class MyWindow(QMainWindow):
     def __save_map(self):
         file_name, _ = QFileDialog.getSaveFileName()
         if file_name:
-            pass
+            with open(file_name, 'w+') as f:
+                f.write(str(self.canvas.get_figures()))
 
     def __load_map(self):
         file_name, _ = QFileDialog.getOpenFileName()
         if file_name:
-            pass
+            with open(file_name, 'r') as f:
+                self.canvas.load_figures(eval("\n".join(f.readlines())))
