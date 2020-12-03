@@ -48,7 +48,9 @@ class MyCanvas(QGroupBox):
         self.pos1 = (0, 0)
         self.pos2 = (0, 0)
         self.start_point = (0, 0)
+        self.row, self.column = 1, 1
         self.is_start = False
+        self.movement_direction = Direction.DOWN
 
     def paintEvent(self, event):
         self.width_size = int(self.width() / 30)
@@ -97,6 +99,7 @@ class MyCanvas(QGroupBox):
         if event.button() == Qt.LeftButton:
             if self.is_start:
                 self.start_point = (int(event.pos().x() / self.width_size), int(event.pos().y() / self.height_size))
+                self.row, self.column = self.start_point[1] + 1, self.start_point[0] + 1
                 self.is_start = False
                 self.update()
                 self.repaint()
@@ -127,52 +130,64 @@ class MyCanvas(QGroupBox):
     def run(self):
         self.generate_grid()
         self.grid_map = [[Tile() for j in range(32)] for i in range(22)]
-        row, column = self.start_point[1] + 1, self.start_point[0] + 1
         distance = 4
-        movement_direction = Direction.DOWN
         while True:
-            self.__update_grid_map(column, distance, row, movement_direction)
-
-            if self.check_grid_map(row, column, movement_direction) or self.check_if_occupied(row, column,
-                                                                                              movement_direction):
-                row, column, movement_direction = self.check_grid(row, column, movement_direction)
+            if self.check_if_occupied():
+                self.__update_grid_map(distance, 'mask')
             else:
-                row, column = self.get_next_position(row, column, movement_direction)
+                self.__update_grid_map(distance, None)
 
-            self.start_point = (column - 1, row - 1)
+            if self.check_grid_map() or self.check_if_occupied():
+                self.row, self.column, self.movement_direction = self.check_grid()
+            else:
+                self.row, self.column = self.get_next_position(self.movement_direction)
+
+            self.start_point = (self.column - 1, self.row - 1)
             self.update()
             self.repaint()
-            time.sleep(0.05)
+            time.sleep(0.1)
 
-    def __update_grid_map(self, column, distance, row, movement_direction):
-        if movement_direction.get_bum() != Direction.UP:
-            d = distance if row - distance >= 0 else row
-            if row - distance >= 0:
-                self.grid_map[row - distance][column].update_value("+")
+    def __update_grid_map(self, distance, with_mask):
+        if self.movement_direction.get_bum() != Direction.UP:
+            d = distance if self.row - distance >= 0 else self.row
+            if self.row - distance >= 0:
+                if with_mask is not None:
+                    self.grid_map[self.row - distance][self.column].update_value(with_mask, self.__get_mask(self.row - distance, self.column))
+                else:
+                    self.grid_map[self.row - distance][self.column].update_value("+", None)
             for i in range(1, d):
-                if self.grid[row - i][column] != 1:
-                    self.grid_map[row - i][column].update_value("-")
-        if movement_direction.get_bum() != Direction.DOWN:
-            d = distance if row + distance < len(self.grid_map) else len(self.grid_map) - row
-            if row + distance < len(self.grid_map):
-                self.grid_map[row + distance][column].update_value("+")
+                if self.grid[self.row - i][self.column] != 1:
+                    self.grid_map[self.row - i][self.column].update_value("-", None)
+        if self.movement_direction.get_bum() != Direction.DOWN:
+            d = distance if self.row + distance < len(self.grid_map) else len(self.grid_map) - self.row
+            if self.row + distance < len(self.grid_map):
+                if with_mask is not None:
+                    self.grid_map[self.row + distance][self.column].update_value(with_mask, self.__get_mask(self.row + distance, self.column))
+                else:
+                    self.grid_map[self.row + distance][self.column].update_value("+", None)
             for i in range(1, d):
-                if self.grid[row + i][column] != 1:
-                    self.grid_map[row + i][column].update_value("-")
-        if movement_direction.get_bum() != Direction.LEFT:
-            d = distance if column - distance >= 0 else column
-            if column - distance >= 0:
-                self.grid_map[row][column - distance].update_value("+")
+                if self.grid[self.row + i][self.column] != 1:
+                    self.grid_map[self.row + i][self.column].update_value("-", None)
+        if self.movement_direction.get_bum() != Direction.LEFT:
+            d = distance if self.column - distance >= 0 else self.column
+            if self.column - distance >= 0:
+                if with_mask is not None:
+                    self.grid_map[self.row][self.column - distance].update_value(with_mask, self.__get_mask(self.row, self.column-distance))
+                else:
+                    self.grid_map[self.row][self.column - distance].update_value("+", None)
             for i in range(1, d):
-                if self.grid[row][column - i] != 1:
-                    self.grid_map[row][column - i].update_value("-")
-        if movement_direction.get_bum() != Direction.RIGHT:
-            d = distance if column + distance < len(self.grid_map[0]) else len(self.grid_map[0]) - column
-            if column + distance < len(self.grid_map[0]):
-                self.grid_map[row][column + distance].update_value("+")
+                if self.grid[self.row][self.column - i] != 1:
+                    self.grid_map[self.row][self.column - i].update_value("-", None)
+        if self.movement_direction.get_bum() != Direction.RIGHT:
+            d = distance if self.column + distance < len(self.grid_map[0]) else len(self.grid_map[0]) - self.column
+            if self.column + distance < len(self.grid_map[0]):
+                if with_mask is not None:
+                    self.grid_map[self.row][self.column + distance].update_value(with_mask, self.__get_mask(self.row, self.column + distance))
+                else:
+                    self.grid_map[self.row][self.column + distance].update_value("+", None)
             for i in range(1, d):
-                if self.grid[row][column + i] != 1:
-                    self.grid_map[row][column + i].update_value("-")
+                if self.grid[self.row][self.column + i] != 1:
+                    self.grid_map[self.row][self.column + i].update_value("-", None)
 
     def set_start(self):
         self.is_start = True
@@ -186,6 +201,7 @@ class MyCanvas(QGroupBox):
     def load_figures(self, elements):
         self.start_point = elements['start_point']
         self.figures = elements['figures']
+        self.row, self.column = self.start_point[1] + 1, self.start_point[0] + 1
 
     def generate_grid(self):
         self.grid = [[1 if i == 0 or i == 21 or j == 0 or j == 31 else 0 for j in range(32)] for i in range(22)]
@@ -197,48 +213,48 @@ class MyCanvas(QGroupBox):
         for g in self.grid:
             print(g)
 
-    def check_grid(self, row, column, direction):
-        r, c = self.get_next_position(row, column, direction.next())
+    def check_grid(self):
+        r, c = self.get_next_position(self.movement_direction)
         if self.grid[r][c] == 1:
-            r, c = self.get_next_position(row, column, direction.get_bum())
-            return r, c, direction.get_bum()
-        return r, c, direction.next()
+            r, c = self.get_next_position(self.movement_direction.get_bum())
+            return r, c, self.movement_direction.get_bum()
+        return r, c, self.movement_direction.next()
 
-    def check_if_occupied(self, row, column, direction):
-        r, c = self.get_next_position(row, column, direction)
+    def check_if_occupied(self):
+        r, c = self.get_next_position(self.movement_direction)
         return self.grid[r][c] == 1
 
-    def check_grid_map(self, row, column, direction):
+    def check_grid_map(self):
         rows = []
         columns = []
-        if direction == Direction.UP:
+        if self.movement_direction == Direction.UP:
             for i in range(1, 4):
-                if row - i >= 0:
-                    rows.append(row - i)
-            columns = [column]
-        if direction == Direction.DOWN:
+                if self.row - i >= 0:
+                    rows.append(self.row - i)
+            columns = [self.column]
+        if self.movement_direction == Direction.DOWN:
             for i in range(1, 4):
-                if row + i < len(self.grid_map):
-                    rows.append(row + i)
-            columns = [column]
-        if direction == Direction.LEFT:
+                if self.row + i < len(self.grid_map):
+                    rows.append(self.row + i)
+            columns = [self.column]
+        if self.movement_direction == Direction.LEFT:
             for i in range(1, 4):
-                if column - i >= 0:
-                    columns.append(column - i)
-            rows = [row]
-        if direction == Direction.RIGHT:
+                if self.column - i >= 0:
+                    columns.append(self.column - i)
+            rows = [self.row]
+        if self.movement_direction == Direction.RIGHT:
             for i in range(1, 4):
-                if column + i < len(self.grid_map[0]):
-                    columns.append(column + i)
-            rows = [row]
+                if self.column + i < len(self.grid_map[0]):
+                    columns.append(self.column + i)
+            rows = [self.row]
 
         for r in rows:
             for c in columns:
                 if self.grid_map[r][c].value % 3 == 0 and self.grid_map[r][c].value != 0:
                     return True
 
-    def get_next_position(self, row, column, direction):
-        mask = self.__get_mask(row, column)
+    def get_next_position(self, direction):
+        mask = self.__get_mask(self.row, self.column)
         index_r, index_c = 0, 0
         min_value = 15
         for i_r, r in enumerate(mask):
@@ -249,34 +265,34 @@ class MyCanvas(QGroupBox):
                         index_r = i_r
                         index_c = i_c
         change_r = (index_r - 1)
-        change_c = (index_r - 1)
-        # return row + change_r, \
-        #        column + change_c, \
+        change_c = (index_c - 1)
+        # return self.row + change_r, \
+        #        self.column + change_c, \
         #        Direction.UP if change_r == -1 else \
         #            Direction.DOWN if change_r == 1 else \
         #                Direction.RIGHT if change_c == 1 else \
         #                    Direction.LEFT
-        return row + 1 if direction == Direction.DOWN else row - 1 if direction == Direction.UP else row, \
-               column + 1 if direction == Direction.RIGHT else column - 1 if direction == Direction.LEFT else column
+        return self.row + 1 if direction == Direction.DOWN else self.row - 1 if direction == Direction.UP else self.row, \
+               self.column + 1 if direction == Direction.RIGHT else self.column - 1 if direction == Direction.LEFT else self.column
 
-    def __get_mask(self, row, column):
+    def __get_mask(self, row_current, column_current):
         return [
             [
-                0 if row - 1 < 0 else 0 if column - 1 < 0 else self.grid_map[row - 1][column - 1].value,
-                0 if row - 1 < 0 else self.grid_map[row - 1][column].value,
-                0 if row - 1 < 0 else 0 if column + 1 >= len(self.grid_map[0]) else self.grid_map[row - 1][
-                    column + 1].value
+                0 if self.row - 1 < 0 else 0 if column_current - 1 < 0 else self.grid_map[row_current - 1][column_current - 1].value,
+                0 if self.row - 1 < 0 else self.grid_map[row_current - 1][column_current].value,
+                0 if self.row - 1 < 0 else 0 if column_current + 1 >= len(self.grid_map[0]) else self.grid_map[row_current - 1][
+                    column_current + 1].value
             ],
             [
-                0 if column - 1 < 0 else self.grid_map[row][column - 1].value,
-                self.grid_map[row][column].value,
-                0 if column + 1 >= len(self.grid_map[0]) else self.grid_map[row][column + 1].value
+                0 if column_current - 1 < 0 else self.grid_map[row_current][column_current - 1].value,
+                self.grid_map[row_current][column_current].value,
+                0 if column_current + 1 >= len(self.grid_map[0]) else self.grid_map[row_current][column_current + 1].value
             ],
             [
-                0 if row + 1 >= len(self.grid_map) else 0 if column - 1 < 0 else self.grid_map[row + 1][
-                    column - 1].value,
-                0 if row + 1 >= len(self.grid_map) else self.grid_map[row + 1][column].value,
-                0 if row + 1 >= len(self.grid_map) else 0 if column + 1 >= len(self.grid_map[0]) else
-                self.grid_map[row + 1][column + 1].value
+                0 if row_current + 1 >= len(self.grid_map) else 0 if self.column - 1 < 0 else self.grid_map[row_current + 1][
+                    column_current - 1].value,
+                0 if row_current + 1 >= len(self.grid_map) else self.grid_map[row_current + 1][column_current].value,
+                0 if row_current + 1 >= len(self.grid_map) else 0 if column_current + 1 >= len(self.grid_map[0]) else
+                self.grid_map[row_current + 1][column_current + 1].value
             ]
         ]
